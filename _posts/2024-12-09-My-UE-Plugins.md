@@ -24,7 +24,7 @@ The pool does **NOT** require a subsystem which was a massive goal of mine when 
 
 
 ### [Squirrel Noise Repository](https://github.com/itsBaffled/BFSquirrel)
-This plugin is not only a wrapper for [Squirrel noise](http://eiserloh.net/noise/SquirrelNoise5.hpp) (which if you didn't know is a very fast and efficient pseudo random number generator that uses noise and deterministic seeds and indexes, [this](https://www.youtube.com/watch?v=LWFzPP8ZbdU) is definitely worth a watch if you have the time) but also comes with an integration with Unreal and a custom K2 node implementation that makes the editor UI for using the noise super clean (See the repo for more on this). <br>
+This plugin is not only a wrapper for Squirrel noise "http://eiserloh.net/noise/SquirrelNoise5.hpp" (which if you didn't know is a very fast and efficient pseudo random number generator that uses noise and deterministic seeds and indexes, [this](https://www.youtube.com/watch?v=LWFzPP8ZbdU) is definitely worth a watch if you have the time) but also comes with an integration with Unreal and a custom K2 node implementation that makes the editor UI for using the noise super clean (See the repo for more on this). <br>
 
 There are many reasons to prefer this over unreals base `FMath::Rand` and `FRandomStream` if you really care about randomness. <br>
 

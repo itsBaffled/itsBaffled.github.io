@@ -50,7 +50,7 @@ The setup is actually quite simple and mostly just revolves around a callback wh
 
 For this example I will create an editor only module named "MyProjectEditor" of type "UncookedOnly" so I can have my drawing functions isolated and neatly kept out of gameplay code but there is **nothing** stopping you from placing the registration and drawing code in a regular gameplay object, the code should however be stripped from final packages with the use of preprocessor directives like `#if WITH_EDITOR` or `#if !UE_BUILD_SHIPPING` etc. <br>
 
-> **NOTE**: Even when packaged in stand alone the engine still invokes any functions registered with `UDebugDrawService` via `UGameViewportClient::Draw` - without looking too far into it, it seems that `FSceneViewport` will always create a new `FDebugCanvasDrawer` from the constructor leading to the debug canvas being valid and causing the engine to take the code path that draws all debug stuff with that canvas (even though most other debug drawing is stripped? I honestly feel like this isn't intentional but I have no idea ultimately.) but this is another reason why it's important you should strip any registrations you make yourself otherwise it's just pure overhead and bad practice.
+> **NOTE**: Even when packaged in stand alone the engine still invokes any functions registered with `UDebugDrawService` via `UGameViewportClient::Draw` - without looking too far into it, it seems that `FSceneViewport` will always create a new `FDebugCanvasDrawer` from the constructor leading to the debug canvas being valid and causing the engine to take the code path that draws all debug stuff with that canvas (even though most other debug drawing is stripped? I honestly feel like this isn't intentional but I have no idea ultimately.) but this is another reason why it's important to strip any registrations you make yourself from final builds otherwise it's just pure overhead and bad practice.
 
 <br>
 First step is to create the module and register in its `StartupModule` and `ShutdownModule` functions to the `UDebugDrawService`.<br>
@@ -58,7 +58,9 @@ First step is to create the module and register in its `StartupModule` and `Shut
 
 <div style="display: flex; align-items: flex-start; gap: 20px;">
     <div style="max-width: 50%;">
-        I found registering via the modules lifetimes to be the simplest but you can register any time (even during gameplay), just be sure to unregister, but, before showing the <a href="#simple-example">code</a> I should explain a little about the visibility flags. 
+        I found registering via the modules lifetimes to be the simplest but you can register any time (even during gameplay), just be sure to unregister. 
+        <br>
+        Before showing the <a href="#simple-example">code</a> I should explain a little about the visibility flags. 
         <br>
         <br>
         
@@ -73,7 +75,7 @@ First step is to create the module and register in its `StartupModule` and `Shut
         <br>
         <br>
 
-        Epic also has an overview on viewport show flags <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/viewport-show-flags-in-unreal-engine">here</a> if you want to learn more about them.
+        Epic also has an overview on their viewport show flags <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/viewport-show-flags-in-unreal-engine">here</a> if you want to learn more about them.
 
     </div>
     <div style="flex: 1;">
@@ -84,8 +86,10 @@ First step is to create the module and register in its `StartupModule` and `Shut
 
 
 ### Simple Example
-Here is how the setup looks in code:
-```cpp
+Here is how the setup looks in code, as we can see it's bare bones and just draws some text and a sphere in the editor viewport. <br>
+<details> 
+<summary>Code Snippet</summary>
+{% highlight c++ %}
 const TCHAR* MyShowFlagName = TEXT("MyCoolFlag");
 // you can also keep show flags in shipping builds
 // SFG_Normal just saves us going inside of a dropdown menu to find it
@@ -117,10 +121,11 @@ void FMyProjectEditorModule::ShutdownModule()
 {
     UDebugDrawService::Unregister(DrawDelegate);
 }
-```
+{% endhighlight %}
+</details>
 
 <br>
-Here is the result, as you can see the orange "Hello World" text and white sphere are drawn at 0,0,0 in the editor viewport. <br>
+And here is the result, if you managed to get this far then that is basically all that is needed to get started! <br>
 <img src="/assets/img/UE/simple_debugdrawservice.png" alt="Simple Example" style="width: 100%;">
 
 
@@ -136,10 +141,12 @@ This pretty basic and boring though, so now lets start making a more complex exa
 
 As seen in the video above I am able to limit showing certain debug information to only when the actor is selected, this is done by iterating over the selected actors and checking if the current actor is selected. <br>
 You also see how I am able to sort and draw connections between the actors based on some arbitrary ID. <br>
-<br>
+
 I didn't however show me toggling the visibility flag from the editor menu but you can see from the flags example screenshot above how it would be done from either the "Show" menu but you also can toggle it at runtime through the console with commands like `show MyCoolFlag`. <br>
 
 Here is the example code for the more complex example (this is quick and dirty and not optimized but it gets the point across, debug drawing code shouldn't need to be optimized since it's only for debugging purposes anyway):
+<details> 
+<summary>Code Snippet</summary>
 {% highlight c++ %}
 void MyDrawFunction(UCanvas* Canvas, APlayerController* PC)
 {
@@ -191,6 +198,7 @@ void MyDrawFunction(UCanvas* Canvas, APlayerController* PC)
             
 
         // Finally, for each selected actor draw a little more information
+        // This requires the UnrealEd module so be sure to keep this OUT of gameplay modules
         for (FSelectionIterator Selection(*GEditor->GetSelectedActors()); Selection; ++Selection)
         {
             auto* Actor = Cast<AMyCoolActor>(*Selection);
@@ -212,6 +220,7 @@ void MyDrawFunction(UCanvas* Canvas, APlayerController* PC)
     }
 }
 {% endhighlight %}
+</details> 
 
 ---
 ## Summary

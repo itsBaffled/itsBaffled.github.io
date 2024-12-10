@@ -6,7 +6,7 @@ permalink: /posts/UE/Creating-A-Plugin-Or-Module
 ---
 
 ## Introduction
-When working in Unreal Engine, sometimes you need to create a plugin or module to extend the engine or add functionality. This can be for a number of reasons like keeping code isolated, sharing code between projects, or even just to keep things organized.
+When working in Unreal Engine, sometimes you need to create a plugin or module to extend the engine or add functionality. This can be for a number of reasons like keeping code/assets isolated, sharing code/assets between projects, or even just to keep things organized.
 
 
 There are PLENTY of resources on how to create a plugin or module for Unreal Engine but I wanted to create a simple guide that I can link to if need be so I can save time in other posts.
@@ -14,9 +14,9 @@ There are PLENTY of resources on how to create a plugin or module for Unreal Eng
 
 
 ### Module vs Plugin
-At a high level there isn't really a Module vs Plugin, a plugin is simply a collection/s of modules (there are also content only plugins that supply no code and just .uasset files but we won't be covering that here as it's simple if you already understand regular plugins).<br>
+At a high level there isn't really a "Module vs Plugin", a plugin is simply a collection of modules and assets (there are also content only plugins that supply no code and just .uasset files but we won't be covering that here as it's simple if you already understand regular plugins).<br>
 
-So, when choosing to create a plugin or module it simply comes down to does this module have somewhere it makes sense to exist already or should I create a new plugin to house it. <br>
+So, when it comes to choosing between creating a brand new plugin or adding a module to an existing one, it comes down to what you need. If you are creating a module that is very specific to your project and has no real use outside of it then it makes sense to add it to your project as a module, if you are creating a module that could be useful in other projects or is a standalone feature then it makes sense to create a plugin for it. <br>
 
 Let's imagine we were making a runtime building/crafting system, I could see great benefit to this being it's own plugin for future reusability and ease of sharing between projects so I would definitely opt to create a plugin for this, where as lets say I was creating a specific enemy type for my game, I might opt to still create a separate module for all enemy logic just to keep it out of the core of the game code but I wouldn't see a need to create a plugin for it.
 <br>
@@ -31,22 +31,28 @@ If you are unfamiliar with how normal DLLs and static libraries work then I sugg
 
 The TLDR for linking symbols across modules is that the symbol must be explicitly exported from their source module with the `MYMODULENAME_API` macro or the symbols must be a header only implementation. <br>
 If a class as a whole is exported then its functions are implicitly also exported. <br>
-Unreal also has specifiers such as MinimalAPI or NoExport that can be used with `UCLASS`s but I find it be less explicit. <br>
-Read more [here](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-modules), [here](https://dev.epicgames.com/documentation/en-us/unreal-engine/module-api-specifiers-in-unreal-engine) and [here](https://benui.ca/unreal/uclass/#minimalapi). <br>
+Unreal also has specifiers such as MinimalAPI or NoExport that can be used with `UCLASS`s but I find it be less explicit. Read more [here](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-modules), [here](https://dev.epicgames.com/documentation/en-us/unreal-engine/module-api-specifiers-in-unreal-engine) and [here](https://benui.ca/unreal/uclass/#minimalapi). <br>
 
-If an engine class is NOT explicitly exported and you try to inherit from it then you will get linking errors, one of the only other time you often get linking errors is when having **multiple definitions** of the same symbol, this is usually due to including a header file in multiple places that defines the same symbol in a global way or having a circular dependency.
+If an engine class is NOT explicitly exported and you try to inherit from it then you will get linking errors, there is no real work around for this and I noticed epics push for removing whole class exports and relying on manually exporting each symbol has been the cause for a fair amount of unneeded headaches. In those cases you either need to copy the plugin to your projects plugin folder and edit the copied plugin there or copy the entire class if applicable and just specialize it for your own cases (though this is rarely needed).
+
+Another cause for linking errors is when having **multiple definitions** of the same symbol, this is usually due to including a header file in multiple places that defines the same symbol in a global way or having a circular dependency / Missing Pragma once.
 
 
 ## Overview
 ### Plugin Overview
 Plugins are a way to extend the functionality of the engine, they can contain code, content, or both. Plugins can be enabled or disabled on a per project basis and can be shared between projects. Plugins can also be distributed via the marketplace or other means.<br>
 
-If a plugin is not inside of your projects `/Plugins` folder then you also must explicitly add it as a dependency in your `.uproject` file (unreal handles this when you click the tick in the editor to enable a plugin).<br>
+If a plugin is not inside of your projects `/Plugins` folder then you also must explicitly add it as a dependency in your `.uproject` file (unreal handles this when you click the tick in the editor to enable a plugin).
+<br>
+
+
+> You can copy plugins from the engine to your projects plugins folder and modify them without affecting the source engine. This can be a godsend for non custom engine builds where you can't modify the engine source code directly. <br>
+{: .prompt-info }
 
 A non code Plugin must contain the following: <br>
-- A .uplugin file, this allows us to specify the modules within our plugin, when they are loaded, and other metadata about the plugin. It also allows us to specify other plugins that our plugin depends on.
-- A `Source` directory containing the directories of modules within the plugin.
-- Typically the plugin will contain a default module of the same name as the plugin
+- A `.uplugin` file, this allows us to specify the modules within our plugin, when they are loaded, and other metadata about the plugin. It also allows us to specify other plugins that our plugin depends on.
+- A `Source` directory containing the directories of modules within the plugin or a `Content` directory for content only plugins.
+- Typically the plugin will contain a default module of the same name as the plugin.
 
 
 
@@ -58,17 +64,15 @@ Each module can choose its type and loading phase which impacts when the module 
 The Most Common Module Types Are ( [Extensive List](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Projects/EHostType__Type#values) ):
 - **Runtime**: What you should use for most modules, this is for your gameplay code.
 - **UncookedOnly**: This is for modules that should only be loaded in uncooked circumstances, useful for K2 nodes or other editor only code.
-- **DeveloperTool**: Not needed often but gives an advantage over UncookedOnly in that it can in any configuration as long as bBuildDeveloperTools is true in your Build.cs file.
+- **DeveloperTool**: Not needed often but gives an advantage over UncookedOnly in that it can in **any** configuration as long as `bBuildDeveloperTools` is true in your `.Build.cs` file, great for being able to debug or use something in a shipping build but the end goal isn't to ship with it.
 
 The Most Common Loading Phases Are ( [Extensive List](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Projects/ELoadingPhase__Type) ):
 - **Default**: This is the most common and is loaded after the engine has initialized.
-- **PreDefault**: This is loaded before the engine has initialized, this is useful for modules that need to be loaded before the engine starts up like K2 code.
+- **PreDefault**: This is loaded before the Default phase, this is useful for modules that need to be loaded before other modules are loaded that depend on it, K2 nodes are a good example, sometimes if the loading order is weird you will have your node be disconnected upon start up because it loads after the module that uses it.
 
 A module must contain the following: <br>
 - A `.Build.cs` file, this file is used to describe how the module is built and what other modules it depends on.
 - `.h` and `.cpp` files that contain the module class and the `IMPLEMENT_MODULE` macro.
-
-See [Creation](#creation) for more details on how to create a module.
 
 
 
